@@ -1,0 +1,16 @@
+# Production environment configuration
+# SECRET_KEY and API keys MUST be set via environment variables.
+
+app_env: production
+app_debug: false
+use_mocks: false
+
+logging:
+  level: WARNING
+  format: json
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  reload: false
+  workers: 4

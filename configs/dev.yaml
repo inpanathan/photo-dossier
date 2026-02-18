@@ -1,0 +1,16 @@
+# Development environment configuration
+# Overrides are merged on top of defaults from Settings class.
+
+app_env: dev
+app_debug: true
+use_mocks: true
+
+logging:
+  level: DEBUG
+  format: console
+
+server:
+  host: "127.0.0.1"
+  port: 8000
+  reload: true
+  workers: 1

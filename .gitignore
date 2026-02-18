@@ -8,3 +8,41 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Secrets — NEVER commit
+.env
+.env.local
+.env.production
+
+# Large data and model artifacts (use DVC)
+data/raw/
+data/processed/
+models/*.pt
+models/*.bin
+models/*.safetensors
+*.onnx
+
+# Experiment tracking
+mlruns/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Script runtime files (pid + log for backgrounded processes)
+.*.pid
+.*.log
+
+# Uploaded files (runtime, not tracked)
+data/uploads/
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml

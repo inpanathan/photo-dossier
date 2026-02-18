@@ -80,10 +80,7 @@ fi
 # -- Run tests if requested -------------------------------------------------
 if [[ "$RUN_TESTS" == true ]]; then
     echo "Running tests..."
-    if [ -d ".venv" ]; then
-        source .venv/bin/activate
-    fi
-    if ! python -m pytest tests/ -q; then
+    if ! uv run pytest tests/ -q; then
         echo "Tests failed! Aborting commit."
         exit 1
     fi

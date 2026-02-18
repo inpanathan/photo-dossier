@@ -1,7 +1,58 @@
 [project]
-name = "person-of-interest"
+name = "ai-ml-project-template"
 version = "0.1.0"
-description = "Add your description here"
+description = "Production-ready AI/ML project template with FastAPI, structured logging, and layered config"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "structlog>=24.4.0",
+    "httpx>=0.28.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0.0",
+    "python-multipart>=0.0.12",
+]
+
+[project.optional-dependencies]
+ml = [
+    "torch>=2.5.0",
+    "transformers>=4.46.0",
+    "numpy>=2.1.0",
+    "Pillow>=11.0.0",
+    "scikit-learn>=1.6.0",
+]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "pre-commit>=4.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "T20"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-x -q --tb=short"

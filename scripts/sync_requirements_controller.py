@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync common_requirements_controller.json from common_requirements.md.
+"""Sync requirements controller JSONs from requirements markdown files.
 
 Parses the markdown to extract all REQ-XXX-NNN IDs with their section,
 subsection, and summary text, then updates the controller JSON.
@@ -9,9 +9,13 @@ subsection, and summary text, then updates the controller JSON.
 - Removed requirements are deleted from the JSON
 - Section/subsection/summary metadata is always refreshed from markdown
 
+Supports multiple requirement files. By default, syncs all known pairs.
+
 Usage:
     python scripts/sync_requirements_controller.py
     python scripts/sync_requirements_controller.py --dry-run
+    python scripts/sync_requirements_controller.py --file common
+    python scripts/sync_requirements_controller.py --file documentation
 """
 
 import argparse
@@ -20,9 +24,19 @@ import re
 import sys
 from pathlib import Path
 
-DOCS_DIR = Path(__file__).resolve().parent.parent / "docs"
-MD_PATH = DOCS_DIR / "common_requirements.md"
-JSON_PATH = DOCS_DIR / "common_requirements_controller.json"
+DOCS_DIR = Path(__file__).resolve().parent.parent / "docs" / "requirements"
+
+# Known requirement file pairs: (markdown_filename, json_filename)
+REQUIREMENT_FILES = {
+    "common": (
+        "common_requirements.md",
+        "common_requirements_controller.json",
+    ),
+    "documentation": (
+        "documentation_requirements.md",
+        "documentation_requirements_controller.json",
+    ),
+}
 
 REQ_PATTERN = re.compile(r"- \[ \] \*\*(?P<id>REQ-[A-Z]+-\d+)\*\*:\s*(?P<summary>.+)")
 SECTION_PATTERN = re.compile(r"^## \d+\.\s+(?P<name>.+)")
@@ -66,18 +80,19 @@ def parse_markdown(path: Path) -> dict[str, dict]:
     return requirements
 
 
-def sync(dry_run: bool = False) -> None:
-    if not MD_PATH.exists():
-        print(f"Error: {MD_PATH} not found", file=sys.stderr)
-        sys.exit(1)
+def sync_file(md_path: Path, json_path: Path, dry_run: bool = False) -> None:
+    """Sync a single markdown/JSON pair."""
+    if not md_path.exists():
+        print(f"  Skipping: {md_path.name} not found", file=sys.stderr)
+        return
 
     # Parse current markdown
-    md_reqs = parse_markdown(MD_PATH)
+    md_reqs = parse_markdown(md_path)
 
     # Load existing JSON (if any)
     existing: dict[str, dict] = {}
-    if JSON_PATH.exists():
-        existing = json.loads(JSON_PATH.read_text())
+    if json_path.exists():
+        existing = json.loads(json_path.read_text())
 
     md_ids = set(md_reqs.keys())
     json_ids = set(existing.keys())
@@ -109,22 +124,22 @@ def sync(dry_run: bool = False) -> None:
             }
 
     # Report
-    print(f"Markdown requirements: {len(md_reqs)}")
-    print(f"Existing JSON entries: {len(existing)}")
-    print(f"  Added:   {len(added)}")
-    print(f"  Removed: {len(removed)}")
-    print(f"  Kept:    {len(kept)}")
+    print(f"  Markdown requirements: {len(md_reqs)}")
+    print(f"  Existing JSON entries: {len(existing)}")
+    print(f"    Added:   {len(added)}")
+    print(f"    Removed: {len(removed)}")
+    print(f"    Kept:    {len(kept)}")
 
     if added:
-        print("\n  New requirements:")
+        print("\n    New requirements:")
         for req_id in added:
-            print(f"    + {req_id}: {md_reqs[req_id]['summary']}")
+            print(f"      + {req_id}: {md_reqs[req_id]['summary']}")
 
     if removed:
-        print("\n  Removed requirements:")
+        print("\n    Removed requirements:")
         for req_id in removed:
             flags = f"implement={existing[req_id].get('implement', 'N')}, enable={existing[req_id].get('enable', 'N')}"
-            print(f"    - {req_id} ({flags})")
+            print(f"      - {req_id} ({flags})")
 
     # Check for metadata changes on kept entries
     metadata_changes = 0
@@ -137,26 +152,44 @@ def sync(dry_run: bool = False) -> None:
             metadata_changes += 1
 
     if metadata_changes:
-        print(f"\n  Metadata refreshed: {metadata_changes} entries")
+        print(f"\n    Metadata refreshed: {metadata_changes} entries")
 
     if dry_run:
-        print(f"\nDry run — no changes written to {JSON_PATH}")
+        print(f"\n  Dry run — no changes written to {json_path.name}")
     else:
-        JSON_PATH.write_text(json.dumps(updated, indent=2) + "\n")
-        print(f"\nWrote {len(updated)} entries to {JSON_PATH}")
+        json_path.write_text(json.dumps(updated, indent=2) + "\n")
+        print(f"\n  Wrote {len(updated)} entries to {json_path.name}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Sync controller JSON from requirements markdown."
+        description="Sync controller JSON(s) from requirements markdown."
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show what would change without writing the file.",
+        help="Show what would change without writing files.",
+    )
+    parser.add_argument(
+        "--file",
+        choices=list(REQUIREMENT_FILES.keys()),
+        default=None,
+        help="Sync only a specific requirement file (default: sync all).",
     )
     args = parser.parse_args()
-    sync(dry_run=args.dry_run)
+
+    files_to_sync = (
+        {args.file: REQUIREMENT_FILES[args.file]}
+        if args.file
+        else REQUIREMENT_FILES
+    )
+
+    for name, (md_name, json_name) in files_to_sync.items():
+        md_path = DOCS_DIR / md_name
+        json_path = DOCS_DIR / json_name
+        print(f"\n=== Syncing {name} requirements ===")
+        print(f"  {md_name} -> {json_name}")
+        sync_file(md_path, json_path, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":
