@@ -1244,5 +1244,152 @@
     "summary": "Implement any regulatory/compliance-driven tests required in your domain",
     "implement": "N",
     "enable": "N"
+  },
+  "REQ-TST-051": {
+    "section": "4. Testing",
+    "subsection": "4.12 Test Environment Isolation",
+    "summary": "Isolate test environments from .env and dev configuration. Override environment variables in root conftest.py to ensure tests run deterministically against mocks with calibrated thresholds.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-TST-052": {
+    "section": "4. Testing",
+    "subsection": "4.12 Test Environment Isolation",
+    "summary": "Separate test thresholds calibrated for mocks from real model integration thresholds. Unit tests should run against mocks; real model integration tests should be in a separate category.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-TST-053": {
+    "section": "4. Testing",
+    "subsection": "4.12 Test Environment Isolation",
+    "summary": "When adding global handlers or middleware, verify existing tests that assert on handler counts, middleware ordering, or singleton state.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-RUN-004": {
+    "section": "5. Running the Application",
+    "subsection": "",
+    "summary": "Scripts in subdirectories must resolve the project root before invoking tools that expect root-relative module paths or configs.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-RUN-005": {
+    "section": "5. Running the Application",
+    "subsection": "",
+    "summary": "Start scripts should be idempotent — detect and stop any existing process before starting a new one to avoid port conflicts and orphaned processes.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-RUN-006": {
+    "section": "5. Running the Application",
+    "subsection": "",
+    "summary": "Differentiate background process helpers for long-running daemons from batch job wrappers. Batch jobs must propagate the child process exit code.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-RUN-007": {
+    "section": "5. Running the Application",
+    "subsection": "",
+    "summary": "Document default development credentials in the app cheatsheet so new developers can log in without reading source code.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-RUN-008": {
+    "section": "5. Running the Application",
+    "subsection": "",
+    "summary": "Provide start and stop scripts for every service in the stack (backend, frontend, workers).",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-SEC-009": {
+    "section": "6. Security",
+    "subsection": "",
+    "summary": "Add model weights, binary artifacts, terminal recordings, and large data files to .gitignore proactively. Review untracked files before every commit.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-CFG-006": {
+    "section": "7. Configuration Management",
+    "subsection": "",
+    "summary": "Never use inline comments in .env files. Many parsers include the comment text as part of the value.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-CFG-007": {
+    "section": "7. Configuration Management",
+    "subsection": "",
+    "summary": "Never store secrets or connection strings in YAML config files. Use YAML only for non-sensitive defaults; secrets must come from environment variables or a secrets manager.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-CFG-008": {
+    "section": "7. Configuration Management",
+    "subsection": "",
+    "summary": "Avoid redundant config flags that control the same behavior. Use a single source of truth for mode switching.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-CFG-009": {
+    "section": "7. Configuration Management",
+    "subsection": "",
+    "summary": "Isolate test configuration from development and production. Create a dedicated test config and override environment variables in test fixtures.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-ERR-006": {
+    "section": "8. Error Handling and Resilience",
+    "subsection": "",
+    "summary": "Catch the narrowest exception type needed. Broad except Exception catches mask real runtime errors.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-ERR-007": {
+    "section": "8. Error Handling and Resilience",
+    "subsection": "",
+    "summary": "Set explicit output limits (e.g., max_tokens) for every LLM generation call. Never rely on large defaults.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-DEP-005": {
+    "section": "9. Dependency Management",
+    "subsection": "",
+    "summary": "When using optional dependency groups (extras), setup and CI scripts must install all required extras explicitly.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-DEP-006": {
+    "section": "9. Dependency Management",
+    "subsection": "",
+    "summary": "Use the project's package manager to execute commands to ensure the correct virtual environment and dependencies are used.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-DOC-006": {
+    "section": "10. Documentation Standards",
+    "subsection": "",
+    "summary": "The deployment runbook must include prerequisite installation steps as the first section, before any operational procedures.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-DOC-007": {
+    "section": "10. Documentation Standards",
+    "subsection": "",
+    "summary": "When scripts source configuration from .env, maintain a .env.example template with all required variables and descriptive comments.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-CIC-006": {
+    "section": "11. CI/CD",
+    "subsection": "",
+    "summary": "Configure pre-commit hooks for large file detection to prevent accidental commits of model weights, ONNX files, datasets, and other binary artifacts.",
+    "implement": "N",
+    "enable": "N"
+  },
+  "REQ-CIC-007": {
+    "section": "11. CI/CD",
+    "subsection": "",
+    "summary": "Always review auto-generated database migration files before applying. Auto-generated migrations may include extraneous schema changes.",
+    "implement": "N",
+    "enable": "N"
   }
 }

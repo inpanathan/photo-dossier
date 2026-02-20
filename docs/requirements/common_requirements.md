@@ -255,11 +255,22 @@ Test the ML pipeline like software: unit tests for preprocessing, feature engine
 - [ ] **REQ-TST-049**: Wire custom dashboards and alerts into monitoring for "tests in production."
 - [ ] **REQ-TST-050**: Implement any regulatory/compliance-driven tests required in your domain.
 
+### 4.12 Test Environment Isolation
+
+- [ ] **REQ-TST-051**: Isolate test environments from `.env` and dev configuration. Override environment variables in root `conftest.py` (or equivalent) to ensure tests run deterministically against mocks with calibrated thresholds.
+- [ ] **REQ-TST-052**: Separate test thresholds calibrated for mocks from real model integration thresholds. Unit tests should run against mocks; real model integration tests should be in a separate category with appropriate tolerances and explicitly opted into.
+- [ ] **REQ-TST-053**: When adding global handlers or middleware (logging buffers, metrics collectors), verify existing tests that assert on handler counts, middleware ordering, or singleton state.
+
 ## 5. Running the Application
 
 - [ ] **REQ-RUN-001**: Create scripts for starting and running the application and place those scripts with appropriate names under the scripts folder.
 - [ ] **REQ-RUN-002**: Document how to run these scripts in a file named app_cheatsheet.md.
 - [ ] **REQ-RUN-003**: Add all the necessary URLs and other details in the app_cheatsheet.md.
+- [ ] **REQ-RUN-004**: Scripts in subdirectories (e.g., `scripts/`) must resolve the project root before invoking tools that expect root-relative module paths or configs.
+- [ ] **REQ-RUN-005**: Start scripts should be idempotent — detect and stop any existing process before starting a new one to avoid port conflicts and orphaned processes.
+- [ ] **REQ-RUN-006**: Differentiate background process helpers for long-running daemons from batch job wrappers. Batch jobs must propagate the child process exit code instead of treating all exits as failures.
+- [ ] **REQ-RUN-007**: Document default development credentials (from seed scripts) in the app cheatsheet so new developers can log in without reading source code.
+- [ ] **REQ-RUN-008**: Provide start and stop scripts for every service in the stack (backend, frontend, workers). Consistency across services reduces onboarding friction.
 
 ## 6. Security
 
@@ -271,6 +282,7 @@ Test the ML pipeline like software: unit tests for preprocessing, feature engine
 - [ ] **REQ-SEC-006**: Sign and verify model artifacts to prevent tampering.
 - [ ] **REQ-SEC-007**: Apply rate limiting and throttling to public-facing endpoints.
 - [ ] **REQ-SEC-008**: Conduct periodic security reviews and penetration testing.
+- [ ] **REQ-SEC-009**: Add model weights, binary artifacts (ONNX, safetensors), terminal recordings, and large data files to `.gitignore` proactively. Review untracked files before every commit to catch large binaries.
 
 ## 7. Configuration Management
 
@@ -279,6 +291,10 @@ Test the ML pipeline like software: unit tests for preprocessing, feature engine
 - [ ] **REQ-CFG-003**: Validate all configuration values at startup and fail fast on invalid settings.
 - [ ] **REQ-CFG-004**: Version-control all hyperparameters and experiment configurations alongside code.
 - [ ] **REQ-CFG-005**: Use feature flags for incremental rollout of new capabilities.
+- [ ] **REQ-CFG-006**: Never use inline comments in `.env` files. Many parsers (pydantic-settings, python-dotenv) include the comment text as part of the value. Place comments on their own line above the variable.
+- [ ] **REQ-CFG-007**: Never store secrets or connection strings in YAML config files. In layered config systems, YAML values passed as explicit constructor kwargs override environment variables. Use YAML only for non-sensitive defaults; secrets must come exclusively from environment variables or a secrets manager.
+- [ ] **REQ-CFG-008**: Avoid redundant config flags that control the same behavior (e.g., `use_mocks` and `MODEL_BACKEND`). Use a single source of truth for mode switching and document precedence clearly if multiple flags exist.
+- [ ] **REQ-CFG-009**: Isolate test configuration from development and production. Create a dedicated test config and override environment variables in test fixtures to prevent `.env` leakage into tests.
 
 ## 8. Error Handling and Resilience
 
@@ -287,6 +303,8 @@ Test the ML pipeline like software: unit tests for preprocessing, feature engine
 - [ ] **REQ-ERR-003**: Set explicit timeouts for all external calls (APIs, databases, model inference).
 - [ ] **REQ-ERR-004**: Use retries with exponential backoff and jitter for transient failures.
 - [ ] **REQ-ERR-005**: Log all exceptions with full context (stack trace, request ID, input summary) for debugging.
+- [ ] **REQ-ERR-006**: Catch the narrowest exception type needed. Broad `except Exception` or multi-type catches like `except (ImportError, OSError)` mask real runtime errors. Fallback-to-mock patterns should only catch `ImportError`.
+- [ ] **REQ-ERR-007**: Set explicit output limits (e.g., `max_tokens`) for every LLM generation call. Never rely on large defaults — a 4096-token default for a 15-word response causes multi-minute generation times.
 
 ## 9. Dependency Management
 
@@ -294,6 +312,8 @@ Test the ML pipeline like software: unit tests for preprocessing, feature engine
 - [ ] **REQ-DEP-002**: Use virtual environments or containers to isolate project dependencies.
 - [ ] **REQ-DEP-003**: Run automated vulnerability scanning on dependencies (e.g., `pip-audit`, `npm audit`, Dependabot).
 - [ ] **REQ-DEP-004**: Document system-level requirements (OS packages, GPU drivers, CUDA versions) needed to build and run the project.
+- [ ] **REQ-DEP-005**: When using optional dependency groups (extras), setup and CI scripts must install all required extras explicitly (e.g., `uv sync --extra dev --extra ml --extra voice`), not just the dev extra.
+- [ ] **REQ-DEP-006**: Use the project's package manager to execute commands (e.g., `uv run pytest` instead of `python -m pytest`) to ensure the correct virtual environment and dependencies are used.
 
 ## 10. Documentation Standards
 
@@ -302,6 +322,8 @@ Test the ML pipeline like software: unit tests for preprocessing, feature engine
 - [ ] **REQ-DOC-003**: Create operational runbooks for deployment, rollback, and incident response.
 - [ ] **REQ-DOC-004**: Keep a changelog that records notable changes, migrations, and breaking changes per release.
 - [ ] **REQ-DOC-005**: Generate and publish API documentation (e.g., OpenAPI/Swagger) for all service endpoints.
+- [ ] **REQ-DOC-006**: The deployment runbook must include prerequisite installation steps (database server, Node.js/npm, GPU drivers, system packages) as the first section, before any operational procedures.
+- [ ] **REQ-DOC-007**: When scripts source configuration from `.env`, maintain a `.env.example` template that includes all required variables with descriptive comments on separate lines above each variable.
 
 ## 11. CI/CD
 
@@ -310,6 +332,8 @@ Test the ML pipeline like software: unit tests for preprocessing, feature engine
 - [ ] **REQ-CIC-003**: Automate deployment to staging and production via pipeline (no manual steps).
 - [ ] **REQ-CIC-004**: Run post-deploy smoke tests to verify critical paths after each deployment.
 - [ ] **REQ-CIC-005**: Define pipelines as code (e.g., GitHub Actions, GitLab CI YAML) and version-control them.
+- [ ] **REQ-CIC-006**: Configure pre-commit hooks for large file detection to prevent accidental commits of model weights, ONNX files, datasets, and other binary artifacts.
+- [ ] **REQ-CIC-007**: Always review auto-generated database migration files (e.g., Alembic autogenerate) before applying. Auto-generated migrations may include extraneous schema changes beyond the intended modification.
 
 ## 12. Data Management and Versioning
 
