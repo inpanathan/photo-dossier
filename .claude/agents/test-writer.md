@@ -3,6 +3,7 @@ name: test-writer
 description: Writes tests following existing project patterns and conventions
 tools: Read, Grep, Glob, Write, Edit, Bash
 model: sonnet
+isolation: worktree
 ---
 
 You are a senior test engineer. Write tests for this Python FastAPI project.

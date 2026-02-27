@@ -7,9 +7,22 @@
 
 ## Model preferences
 
-# Uncomment to prefer a specific model for subagents:
-# - Use haiku for quick tasks to save cost and reduce latency
-# - Use opus for complex architectural decisions
+# Set effort level and model via /model:
+# - Set effort to High for all tasks (Boris's preference)
+# - Use Opus with thinking for complex architectural work
+# - Use Sonnet for standard coding tasks and subagents
+# - Use Haiku for exploration-only agents (fastest, cheapest)
+
+## Parallel workflow
+
+# Boris runs 3-5 worktree sessions in parallel:
+# - claude --worktree feature-auth   (session 1: auth feature)
+# - claude --worktree fix-parsing    (session 2: bug fix)
+# - claude --worktree add-tests      (session 3: test coverage)
+#
+# Tab naming convention: 1-feature, 2-tests, 3-bugfix
+# Start mobile sessions from Claude iOS app, continue on desktop with --teleport
+# Background sessions with & and check later
 
 ## Workflow preferences
 
@@ -17,6 +30,7 @@
 # - Always run tests before committing (already default)
 # - Skip typecheck during rapid iteration (not recommended for final commits)
 # - Preferred commit message style: conventional commits / free-form
+# - Voice dictation: fn x2 on macOS to speak prompts 3x faster than typing
 
 ## Environment notes
 
@@ -25,9 +39,12 @@
 # - OS: Ubuntu / macOS / WSL
 # - GPU available: yes / no
 # - Default MODEL_BACKEND: mock / local / cloud
+# - Terminal: Ghostty / iTerm2 / Warp / default
 
 ## Custom patterns
 
 # Add any personal conventions or reminders:
 # - I prefer verbose test output: use `uv run pytest -v` instead of `-q`
 # - My API key is in 1Password, not .env — remind me to export it
+# - Configure status line: /statusline
+# - Customize keybindings: /keybindings

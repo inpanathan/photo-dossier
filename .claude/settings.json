@@ -1,4 +1,23 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(uv run *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git stash*)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(wc *)",
+      "Bash(echo *)",
+      "Bash(which *)",
+      "Bash(gh issue *)",
+      "Bash(gh pr *)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
