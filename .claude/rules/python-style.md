@@ -16,3 +16,8 @@
 - Never use `print()` in `src/` — use `structlog` via `get_logger(__name__)`
 - Never use bare `except:` — always catch a specific exception type
 - Prefer early returns to reduce nesting
+- Catch the narrowest exception: `except ImportError` for optional deps, not `except (ImportError, OSError)`
+- Set explicit `max_tokens` on every LLM generation call — never rely on large defaults
+- Use lazy-initialized singletons in FastAPI route modules to avoid circular imports
+- Test doubles should subclass the real client and override network methods (e.g., `CannedPrometheusClient(PrometheusClient)`)
+- Use `TYPE_CHECKING` for imports that are only needed at runtime in specific functions — move to runtime import inside the function if needed

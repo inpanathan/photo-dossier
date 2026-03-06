@@ -60,6 +60,32 @@ bash scripts/sync_requirements.sh --dry-run          # preview changes
 - Logging: always use structlog, never `print()`. Use event-style names: `logger.info("model_loaded", model_id=...)`
 - Tests: mirror src/ structure in tests/. Use `pytest.fixture()` for shared setup. Integration tests get a `client` fixture from `TestClient`
 
+## Lessons learned (apply to all work)
+
+These are hard-won lessons from real implementation sessions. Violating them causes real bugs.
+
+### Configuration gotchas
+- **YAML constructor kwargs override env vars** in pydantic-settings. Never store secrets in YAML — env vars must be the final authority for sensitive values
+- **Never inline comments in `.env` files** — parsers include comment text as part of the value
+- **Use `__` (double underscore) for nested env vars** — e.g., `MONITOR__LLM_API_KEY` maps to `settings.monitor.llm_api_key`
+
+### Deployment & scripts
+- **Idempotent != safe to re-run** — sentinel files prevent step re-execution but don't detect downstream state. Check for running services before destructive operations
+- **Head-first sequential start for distributed systems** — start head node, poll readiness, then start workers. Don't start all nodes simultaneously
+- **Kill zombie processes before port binding** — `lsof -ti:<PORT> | xargs kill` before starting services. Prevents `EADDRINUSE`
+- **Scripts must resolve project root** — scripts in `scripts/` must `cd` to project root before invoking tools that expect root-relative paths
+
+### Testing
+- **Dev and test Docker stacks use different ports** — never share ports between dev and test infrastructure
+- **Test doubles subclass real clients** — override network methods, not the entire class. Keeps tests close to production behavior
+- **Adding global handlers/middleware breaks tests** — new middleware can change handler counts or ordering. Always verify existing tests after adding globals
+- **Optional service missing key = runtime error, not startup crash** — apps should work without optional services (e.g., LLM). Only fail when the optional feature is actually invoked
+
+### Resilience patterns
+- **Multi-level graceful fallback** — when multiple data sources exist, cascade through them: primary → secondary → static → default. Never crash from missing data
+- **TTL caches for all external data** — always define TTL; never cache forever. Prevents hammering external services
+- **In-memory state is session-scoped** — document what doesn't persist across restarts. Config defaults are the fallback
+
 ## Workflow
 
 - Use `uv` for all Python operations, never `pip` or `pip install`
@@ -76,6 +102,8 @@ bash scripts/sync_requirements.sh --dry-run          # preview changes
 - **Model selection**: Use Opus for complex multi-file architectural work. Subagents default to Sonnet (fast, cost-effective). Use Haiku for exploration-only agents
 - **Verification**: After implementation, use the `verify-app` agent or `/run-checks` to validate before committing. Give Claude a way to verify its work — this 2-3x the quality of results
 - **Post-implementation cleanup**: Use the `code-simplifier` agent after completing a feature to reduce complexity before the PR
+- **Autonomous mode**: When the user says "run autonomously", "run this autonomously", or similar, operate without asking permission for routine read-only operations. This includes: reading files, grepping/searching code, listing directories, running tests, running lint/typecheck, git status/log/diff, and exploring the codebase with subagents. Only pause for confirmation on **destructive or irreversible actions** (deleting files, git push, modifying shared infrastructure, dropping data) or **ambiguous design decisions** where multiple valid approaches exist. The goal is uninterrupted flow — don't ask "shall I look at X?" just look at it.
+- **Task summaries**: After completing any non-trivial task, write a summary to `coding-agent/summaries/<NNN>-<short-name>.md` where `<NNN>` is the next sequential number (zero-padded to 3 digits). The summary must include: date, task description, what was produced (files/artifacts), key decisions made, and any known considerations or follow-ups. This provides a searchable history of all work done on the project
 
 ## Project structure
 
@@ -143,3 +171,4 @@ When implementing any feature, consult the relevant requirements files and their
 See @pyproject.toml for dependencies and tool config.
 See @docs/app_cheatsheet.md for dev URLs, credentials, and operational commands.
 See @docs/requirements/common_requirements.md for project standards.
+See @docs/lessons-learned.md for consolidated lessons from implementation sessions.
