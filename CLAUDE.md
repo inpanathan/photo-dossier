@@ -129,6 +129,10 @@ These are hard-won lessons from real implementation sessions. Violating them cau
 ├── configs/                 # Per-environment YAML configs
 ├── scripts/                 # Setup, deployment, utility scripts
 ├── docs/                    # Requirements, ADRs, runbooks
+│   ├── architecture/        # Generated architecture documents
+│   ├── design/              # Generated design specifications
+│   ├── runbook/             # Deployment and operational runbooks
+│   ├── specs/               # Feature specs
 ├── data/                    # raw/, interim/, processed/, uploads/
 └── models/                  # Saved model artifacts
 ```

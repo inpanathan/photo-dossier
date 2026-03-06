@@ -145,7 +145,11 @@ Documentation shall be treated as living artifacts maintained by agents, not one
 
 ### 5.1 Repo-Stored Documentation
 
-- 5.1.1 Store generated documents in the repository.
+- 5.1.1 Store generated documents in the repository under their designated subdirectories:
+  - Architecture documents → `docs/architecture/`
+  - Design specifications → `docs/design/`
+  - Deployment and operational runbooks → `docs/runbook/`
+  - Feature specs → `docs/specs/`
 - 5.1.2 Wire an agent into CI to flag drift between code and documentation (e.g., changed
   endpoints, config keys, queues).
 
