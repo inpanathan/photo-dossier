@@ -13,6 +13,7 @@
 | `http://localhost:<BACKEND_PORT>/health` | Health check |
 | `http://localhost:<BACKEND_PORT>/docs` | Swagger/OpenAPI docs |
 | `http://localhost:<BACKEND_PORT>/redoc` | ReDoc API docs |
+| `http://localhost:<BACKEND_PORT>/api/v1/admin/static-files` | Admin Console — Static File Mounts |
 
 ### Dev Login Credentials
 
@@ -45,11 +46,36 @@ Seeded by `bash scripts/db_seed.sh`. Password for all accounts: `<!-- TODO: fill
 | `GET` | `/time-series?metric=&bucket=60` | Time-bucketed metric data |
 | `GET` | `/request-stats` | API call counts, errors, latency by path |
 
+### Admin API Endpoints (prefix: `/api/v1/admin`)
+
+All admin endpoints require `X-Admin-Secret` header.
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/static-files` | Admin UI (no auth required) |
+| `GET` | `/static-mounts` | List all static file mounts |
+| `POST` | `/static-mounts` | Create a new mount |
+| `GET` | `/static-mounts/{id}` | Get mount by ID |
+| `PATCH` | `/static-mounts/{id}` | Update a mount |
+| `DELETE` | `/static-mounts/{id}` | Delete a mount |
+| `POST` | `/static-mounts/{id}/toggle` | Enable/disable a mount |
+| `POST` | `/static-mounts/reload` | Re-apply all mounts |
+
 ### API Endpoints (prefix: `/api/v1`)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| <!-- TODO: fill in API endpoints --> | | |
+| `POST` | `/detect` | Detect human and pet faces in an uploaded image |
+| `POST` | `/query` | Query corpus for matching faces (returns matches) |
+| `POST` | `/pipeline` | Full pipeline: query + timeline + dossier (async job) |
+| `POST` | `/dossier` | Generate dossier from query session (async job) |
+| `POST` | `/index` | Start batch indexing of the photo corpus (async job) |
+| `GET` | `/index/stats` | Get index statistics (images, faces, vectors) |
+| `GET` | `/jobs` | List all jobs (optional `?job_type=&status=` filters) |
+| `GET` | `/jobs/{job_id}` | Get job status and progress |
+| `GET` | `/jobs/{job_id}/stream` | SSE stream for real-time job progress |
+| `POST` | `/jobs/{job_id}/cancel` | Cancel a running job |
+| `GET` | `/media/{path}` | Serve images from corpus directory |
 
 ## Commands
 
@@ -81,10 +107,19 @@ uv run pytest tests/ --cov=src --cov-report=html
 |---------|---------|-------------|
 | `APP_ENV` | `dev` | Environment: dev, staging, production, test |
 | `APP_DEBUG` | `true` | Debug mode |
-| `MODEL_BACKEND` | `mock` | Model backend: `mock`, `local`, `cloud` |
+| `ADMIN__SECRET_KEY` | `admin-secret-change-me` | Secret for admin API access |
+| `ADMIN__ALLOWED_BASE_DIRS` | `["data", "static"]` | Directories allowed for static mounts |
+| `ADMIN__MOUNTS_FILE` | `data/static_mounts.json` | Path to mount config file |
 | `SECRET_KEY` | (required in prod) | Application secret key |
-| `DATABASE__URL` | — | Database connection string |
-| <!-- TODO: add project-specific env vars --> | | |
+| `CORPUS__CORPUS_DIR` | `data/corpus` | Photo corpus directory |
+| `INFERENCE__BASE_URL` | `http://100.111.31.125:8010` | Inference service URL (7810 node) |
+| `INDEX__FAISS_INDEX_DIR` | `data/indices` | FAISS index storage directory |
+| `INDEX__METADATA_DB_PATH` | `data/metadata.db` | SQLite metadata database |
+| `INDEX__HUMAN_SIMILARITY_THRESHOLD` | `0.6` | Min similarity for human matches |
+| `INDEX__PET_SIMILARITY_THRESHOLD` | `0.5` | Min similarity for pet matches |
+| `NARRATIVE__LLM_BASE_URL` | `http://localhost:8001/v1` | Local vLLM (Qwen2.5-14B) |
+| `NARRATIVE__VLM_BASE_URL` | `http://100.111.31.125:8011/v1` | VLM service (Qwen2.5-VL) |
+| `JOBS__MAX_CONCURRENT_JOBS` | `4` | Max parallel background jobs |
 
 ## Monitoring
 
@@ -186,6 +221,35 @@ bash frontend/scripts/stop.sh
 
 **Typical dev workflow:** Start the backend first (`bash scripts/start_server.sh`), then in a second terminal start the frontend (`bash frontend/scripts/start.sh`). The frontend dev server proxies API calls to the backend.
 
+### Inference Service (7810 Node)
+
+```bash
+# Start the inference service (loads InsightFace, YOLOv8, DINOv2 on GPU)
+bash scripts/start_inference.sh
+
+# Stop the inference service
+bash scripts/start_inference.sh --stop
+
+# Check inference service logs
+ssh 100.111.31.125 'tail -50 /tmp/inference.log'
+```
+
+### Corpus Indexing
+
+```bash
+# Index the default corpus directory (incremental)
+bash scripts/index_corpus.sh
+
+# Index a specific directory
+bash scripts/index_corpus.sh /path/to/photos
+
+# Force full reindex (skip incremental mode)
+bash scripts/index_corpus.sh --full
+
+# Index a specific dir with full reindex
+bash scripts/index_corpus.sh /path/to/photos --full
+```
+
 ### Data & Models
 
 ```bash
@@ -193,13 +257,7 @@ bash frontend/scripts/stop.sh
 bash scripts/download_models.sh
 
 # Initialize data directory structure
-bash scripts/init_data.sh
-
-# Initialize with mock data for development
-bash scripts/init_data.sh --mock
-
-# Index embeddings into the vector store
-bash scripts/index_embeddings.sh
+mkdir -p data/{corpus,indices,uploads}
 ```
 
 ### Git Workflow

@@ -23,22 +23,78 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
-    """App startup/shutdown lifecycle.
-
-    Add your startup logic here (load models, connect to databases, etc.).
-    """
+    """App startup/shutdown lifecycle."""
     logger.info("app_startup", env=settings.app_env)
 
-    # TODO: Add startup logic here, e.g.:
-    # - Load ML models
-    # - Connect to vector store
-    # - Initialize caches
+    # Initialize admin static mount service
+    from pathlib import Path
+
+    from src.admin.repository import StaticMountRepository
+    from src.admin.routes import set_service
+    from src.admin.service import StaticMountService
+
+    mounts_file = Path(settings.admin.mounts_file)
+    if not mounts_file.is_absolute():
+        from src.utils.config import PROJECT_ROOT
+
+        mounts_file = PROJECT_ROOT / mounts_file
+    repo = StaticMountRepository(mounts_file)
+    service = StaticMountService(repo)
+    service.bind_app(app)
+    set_service(service)
+    service.apply_all_mounts()
+    logger.info("static_mounts_loaded", count=len(repo.list_all()))
+
+    # Initialize Dossier services (requires ML dependencies)
+    _dossier_resources = []
+    try:
+        from src.api.routes import set_services
+        from src.embeddings.client import InferenceClient
+        from src.index.manager import IndexManager
+        from src.ingest.store import MetadataStore
+        from src.jobs.manager import JobManager
+        from src.narrative.describer import PhotoDescriber
+        from src.narrative.generator import DossierGenerator
+        from src.retrieval.service import RetrievalService
+
+        inference_client = InferenceClient()
+        metadata_store = MetadataStore()
+        index_manager = IndexManager()
+        retrieval_service = RetrievalService(inference_client, index_manager, metadata_store)
+        job_manager = JobManager()
+        describer = PhotoDescriber()
+        generator = DossierGenerator()
+
+        set_services(
+            inference_client=inference_client,
+            index_manager=index_manager,
+            metadata_store=metadata_store,
+            retrieval_service=retrieval_service,
+            job_manager=job_manager,
+            describer=describer,
+            generator=generator,
+        )
+
+        _dossier_resources = [metadata_store, index_manager, describer, generator, inference_client]
+
+        logger.info(
+            "dossier_services_initialized",
+            index_stats=index_manager.stats(),
+            corpus_dir=settings.corpus.corpus_dir,
+        )
+
+    except ImportError as e:
+        logger.warning(
+            "dossier_services_skipped",
+            reason="ML dependencies not installed (install with: uv sync --extra ml)",
+            missing_module=str(e),
+        )
 
     yield
 
-    # TODO: Add shutdown logic here, e.g.:
-    # - Close database connections
-    # - Flush logs
+    # Shutdown: close resources
+    for resource in _dossier_resources:
+        resource.close()
 
     logger.info("app_shutdown")
 
@@ -49,6 +105,7 @@ def create_app() -> FastAPI:
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.responses import JSONResponse
 
+    from src.admin.routes import router as admin_router
     from src.api.routes import router
     from src.utils.errors import AppError
 
@@ -72,6 +129,7 @@ def create_app() -> FastAPI:
 
     # Include API routes
     app.include_router(router, prefix="/api/v1")
+    app.include_router(admin_router, prefix="/api/v1")
 
     @app.get("/health")
     async def health_check(request: Request) -> dict:  # noqa: ARG001
@@ -95,9 +153,29 @@ def _error_code_to_status(code: str) -> int:
     """Map AppError codes to HTTP status codes."""
     mapping = {
         "VALIDATION_ERROR": 400,
+        "UNSUPPORTED_IMAGE_FORMAT": 400,
+        "IMAGE_TOO_LARGE": 400,
+        "UPLOAD_CHUNK_INVALID": 400,
+        "UPLOAD_SIZE_EXCEEDED": 400,
+        "MANIFEST_INVALID": 400,
         "UNAUTHORIZED": 401,
         "NOT_FOUND": 404,
+        "MOUNT_NOT_FOUND": 404,
+        "SESSION_NOT_FOUND": 404,
+        "SUBJECT_NOT_FOUND": 404,
+        "JOB_NOT_FOUND": 404,
+        "UPLOAD_SESSION_NOT_FOUND": 404,
+        "MOUNT_CONFLICT": 409,
+        "SESSION_EXPIRED": 410,
+        "MOUNT_FAILED": 422,
+        "NO_FACE_DETECTED": 422,
         "RATE_LIMITED": 429,
+        "INDEX_NOT_LOADED": 503,
+        "INDEX_BUILD_FAILED": 503,
+        "INFERENCE_SERVICE_UNAVAILABLE": 503,
+        "VLM_UNAVAILABLE": 503,
+        "LLM_UNAVAILABLE": 503,
+        "JOB_TIMEOUT": 504,
     }
     return mapping.get(code, 500)
 

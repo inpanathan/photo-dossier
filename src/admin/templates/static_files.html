@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Static File Mounts</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; padding: 2rem; }
+        h1 { margin-bottom: 1.5rem; font-size: 1.5rem; }
+        .container { max-width: 960px; margin: 0 auto; }
+        .card { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #555; }
+        .form-row { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+        .form-group { display: flex; flex-direction: column; flex: 1; min-width: 150px; }
+        .form-group label { font-size: 0.8rem; font-weight: 600; margin-bottom: 0.25rem; color: #666; }
+        input, select { padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem; }
+        input:focus, select:focus { outline: none; border-color: #4a90d9; }
+        .btn { padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 500; }
+        .btn-primary { background: #4a90d9; color: #fff; }
+        .btn-primary:hover { background: #3a7bc8; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-danger:hover { background: #c0392b; }
+        .btn-secondary { background: #95a5a6; color: #fff; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        .btn-success { background: #27ae60; color: #fff; }
+        .btn-success:hover { background: #219a52; }
+        .btn-sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid #eee; font-size: 0.85rem; }
+        th { font-weight: 600; color: #666; background: #fafafa; }
+        .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+        .badge-green { background: #e8f5e9; color: #2e7d32; }
+        .badge-gray { background: #eee; color: #888; }
+        .badge-blue { background: #e3f2fd; color: #1565c0; }
+        .badge-orange { background: #fff3e0; color: #e65100; }
+        .badge-red { background: #fce4ec; color: #c62828; }
+        .actions { display: flex; gap: 0.4rem; }
+        .auth-row { margin-bottom: 1rem; display: flex; gap: 0.75rem; align-items: end; }
+        .auth-row .form-group { flex: 1; }
+        .alert { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85rem; }
+        .alert-error { background: #fce4ec; color: #c62828; }
+        .alert-success { background: #e8f5e9; color: #2e7d32; }
+        .hidden { display: none; }
+        #token-field { transition: opacity 0.2s; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Static File Mounts</h1>
+
+        <div class="auth-row">
+            <div class="form-group">
+                <label for="admin-secret">Admin Secret</label>
+                <input type="password" id="admin-secret" placeholder="Enter admin secret to manage mounts">
+            </div>
+            <button class="btn btn-primary" onclick="loadMounts()">Connect</button>
+        </div>
+
+        <div id="alert" class="alert hidden"></div>
+
+        <div class="card">
+            <h2>Add New Mount</h2>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="folder-path">Folder Path</label>
+                    <input type="text" id="folder-path" placeholder="data/uploads">
+                </div>
+                <div class="form-group">
+                    <label for="url-prefix">URL Prefix</label>
+                    <input type="text" id="url-prefix" placeholder="/files">
+                </div>
+                <div class="form-group">
+                    <label for="access-level">Access Level</label>
+                    <select id="access-level" onchange="toggleTokenField()">
+                        <option value="public">Public</option>
+                        <option value="token">Token</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row" id="token-field" style="display:none;">
+                <div class="form-group">
+                    <label for="access-token">Access Token</label>
+                    <input type="text" id="access-token" placeholder="Bearer token for accessing files">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="createMount()">Add Mount</button>
+        </div>
+
+        <div class="card">
+            <h2>Current Mounts</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>URL Prefix</th>
+                        <th>Folder Path</th>
+                        <th>Access</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="mounts-table">
+                    <tr><td colspan="5" style="text-align:center;color:#999;">Enter admin secret and click Connect</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API = "/api/v1/admin/static-mounts";
+
+        function getSecret() {
+            return document.getElementById("admin-secret").value;
+        }
+
+        function headers() {
+            return { "Content-Type": "application/json", "X-Admin-Secret": getSecret() };
+        }
+
+        function showAlert(msg, type) {
+            const el = document.getElementById("alert");
+            el.textContent = msg;
+            el.className = "alert alert-" + type;
+            el.classList.remove("hidden");
+            setTimeout(() => el.classList.add("hidden"), 4000);
+        }
+
+        function accessBadge(level) {
+            const map = { public: "badge-blue", token: "badge-orange", admin: "badge-red" };
+            return '<span class="badge ' + (map[level] || "badge-gray") + '">' + level + '</span>';
+        }
+
+        function toggleTokenField() {
+            const sel = document.getElementById("access-level").value;
+            document.getElementById("token-field").style.display = sel === "token" ? "flex" : "none";
+        }
+
+        async function loadMounts() {
+            try {
+                const res = await fetch(API, { headers: headers() });
+                if (!res.ok) { showAlert("Failed to load: " + res.status, "error"); return; }
+                const data = await res.json();
+                renderTable(data.mounts);
+                showAlert("Connected", "success");
+            } catch (e) {
+                showAlert("Connection error: " + e.message, "error");
+            }
+        }
+
+        function renderTable(mounts) {
+            const tbody = document.getElementById("mounts-table");
+            if (!mounts.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">No mounts configured</td></tr>';
+                return;
+            }
+            tbody.innerHTML = mounts.map(m => `
+                <tr>
+                    <td><span class="badge ${m.enabled ? 'badge-green' : 'badge-gray'}">${m.enabled ? 'enabled' : 'disabled'}</span></td>
+                    <td><code>${m.url_prefix}</code></td>
+                    <td><code>${m.folder_path}</code></td>
+                    <td>${accessBadge(m.access_level)}</td>
+                    <td class="actions">
+                        <button class="btn btn-sm ${m.enabled ? 'btn-secondary' : 'btn-success'}" onclick="toggleMount('${m.id}')">${m.enabled ? 'Disable' : 'Enable'}</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteMount('${m.id}')">Delete</button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        async function createMount() {
+            const body = {
+                folder_path: document.getElementById("folder-path").value,
+                url_prefix: document.getElementById("url-prefix").value,
+                access_level: document.getElementById("access-level").value,
+            };
+            if (body.access_level === "token") {
+                body.access_token = document.getElementById("access-token").value;
+            }
+            try {
+                const res = await fetch(API, { method: "POST", headers: headers(), body: JSON.stringify(body) });
+                if (!res.ok) {
+                    const err = await res.json();
+                    showAlert(err.error?.message || "Create failed", "error");
+                    return;
+                }
+                showAlert("Mount created", "success");
+                document.getElementById("folder-path").value = "";
+                document.getElementById("url-prefix").value = "";
+                document.getElementById("access-level").value = "public";
+                document.getElementById("access-token").value = "";
+                toggleTokenField();
+                loadMounts();
+            } catch (e) {
+                showAlert("Error: " + e.message, "error");
+            }
+        }
+
+        async function toggleMount(id) {
+            try {
+                const res = await fetch(API + "/" + id + "/toggle", { method: "POST", headers: headers() });
+                if (!res.ok) { showAlert("Toggle failed", "error"); return; }
+                loadMounts();
+            } catch (e) {
+                showAlert("Error: " + e.message, "error");
+            }
+        }
+
+        async function deleteMount(id) {
+            if (!confirm("Delete this mount?")) return;
+            try {
+                const res = await fetch(API + "/" + id, { method: "DELETE", headers: headers() });
+                if (!res.ok) { showAlert("Delete failed", "error"); return; }
+                showAlert("Mount deleted", "success");
+                loadMounts();
+            } catch (e) {
+                showAlert("Error: " + e.message, "error");
+            }
+        }
+    </script>
+</body>
+</html>

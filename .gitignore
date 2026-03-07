@@ -22,6 +22,16 @@ models/*.bin
 models/*.safetensors
 *.onnx
 
+# Dossier data directories (runtime, not tracked)
+data/corpus/
+data/indices/
+data/metadata.db
+data/metadata.db-wal
+data/metadata.db-shm
+
+# FAISS index files
+*.index
+
 # Experiment tracking
 mlruns/
 

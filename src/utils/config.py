@@ -37,13 +37,79 @@ class ServerSettings(BaseSettings):
     reload: bool = False
 
 
-# Add your project-specific nested settings here, e.g.:
-#
-# class LLMSettings(BaseSettings):
-#     api_key: str = ""
-#     model_id: str = "gpt-4"
-#     temperature: float = 0.3
-#     timeout_seconds: int = 30
+class AdminSettings(BaseSettings):
+    """Admin console configuration."""
+
+    secret_key: str = "admin-secret-change-me"
+    allowed_base_dirs: list[str] = Field(default_factory=lambda: ["data", "static"])
+    mounts_file: str = "data/static_mounts.json"
+
+
+class CorpusSettings(BaseSettings):
+    """Photo corpus configuration."""
+
+    corpus_dir: str = "data/corpus"
+    supported_formats: list[str] = Field(
+        default_factory=lambda: ["jpg", "jpeg", "png", "heic", "heif"]
+    )
+    max_image_size_mb: int = 50
+
+
+class InferenceSettings(BaseSettings):
+    """Remote inference service configuration (7810 node)."""
+
+    base_url: str = "http://100.111.31.125:8010"
+    timeout_seconds: int = 30
+    human_model: str = "insightface"
+    pet_model: str = "yolov8"
+    embedding_model: str = "dinov2"
+    min_face_confidence: float = 0.5
+    min_pet_confidence: float = 0.4
+
+
+class IndexSettings(BaseSettings):
+    """FAISS vector index configuration."""
+
+    faiss_index_dir: str = "data/indices"
+    human_index_file: str = "human.index"
+    pet_index_file: str = "pet.index"
+    metadata_db_path: str = "data/metadata.db"
+    human_similarity_threshold: float = 0.6
+    pet_similarity_threshold: float = 0.5
+    default_top_k: int = 50
+    index_type: str = "flat"
+    ivf_nlist: int = 100
+
+
+class NarrativeSettings(BaseSettings):
+    """LLM/VLM narrative generation configuration."""
+
+    llm_base_url: str = "http://localhost:8001/v1"
+    llm_model: str = "Qwen/Qwen2.5-14B-Instruct-AWQ"
+    llm_max_tokens: int = 4000
+    vlm_base_url: str = "http://100.111.31.125:8011/v1"
+    vlm_model: str = "Qwen/Qwen2.5-VL-7B-Instruct"
+    vlm_max_tokens: int = 500
+    temperature: float = 0.3
+
+
+class JobSettings(BaseSettings):
+    """Async job queue configuration."""
+
+    max_concurrent_jobs: int = 4
+    job_timeout_seconds: int = 600
+    result_ttl_seconds: int = 3600
+
+
+class UploadSettings(BaseSettings):
+    """Photo upload configuration."""
+
+    max_file_size_mb: int = 20
+    chunk_size_bytes: int = 1048576
+    upload_dir: str = "data/uploads"
+    accepted_types: list[str] = Field(
+        default_factory=lambda: ["image/jpeg", "image/png", "image/heic"]
+    )
 
 
 class Settings(BaseSettings):
@@ -70,9 +136,13 @@ class Settings(BaseSettings):
     # ---- Nested settings ----
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
-
-    # Add your project-specific settings here, e.g.:
-    # llm: LLMSettings = Field(default_factory=LLMSettings)
+    admin: AdminSettings = Field(default_factory=AdminSettings)
+    corpus: CorpusSettings = Field(default_factory=CorpusSettings)
+    inference: InferenceSettings = Field(default_factory=InferenceSettings)
+    index: IndexSettings = Field(default_factory=IndexSettings)
+    narrative: NarrativeSettings = Field(default_factory=NarrativeSettings)
+    jobs: JobSettings = Field(default_factory=JobSettings)
+    upload: UploadSettings = Field(default_factory=UploadSettings)
 
     @field_validator("app_env")
     @classmethod

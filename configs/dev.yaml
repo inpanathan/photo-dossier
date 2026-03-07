@@ -3,7 +3,6 @@
 
 app_env: dev
 app_debug: true
-use_mocks: true
 
 logging:
   level: DEBUG
@@ -14,3 +13,39 @@ server:
   port: 8000
   reload: true
   workers: 1
+
+corpus:
+  corpus_dir: "data/corpus"
+  max_image_size_mb: 50
+
+inference:
+  base_url: "http://100.111.31.125:8010"
+  timeout_seconds: 30
+  min_face_confidence: 0.5
+  min_pet_confidence: 0.4
+
+index:
+  faiss_index_dir: "data/indices"
+  metadata_db_path: "data/metadata.db"
+  human_similarity_threshold: 0.6
+  pet_similarity_threshold: 0.5
+  default_top_k: 50
+  index_type: "flat"
+
+narrative:
+  llm_base_url: "http://localhost:8001/v1"
+  llm_model: "Qwen/Qwen2.5-14B-Instruct-AWQ"
+  llm_max_tokens: 4000
+  vlm_base_url: "http://100.111.31.125:8011/v1"
+  vlm_model: "Qwen/Qwen2.5-VL-7B-Instruct"
+  vlm_max_tokens: 500
+  temperature: 0.3
+
+jobs:
+  max_concurrent_jobs: 4
+  job_timeout_seconds: 600
+  result_ttl_seconds: 3600
+
+upload:
+  max_file_size_mb: 20
+  upload_dir: "data/uploads"
