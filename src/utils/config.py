@@ -112,6 +112,14 @@ class UploadSettings(BaseSettings):
     )
 
 
+class SecuritySettings(BaseSettings):
+    """Security configuration."""
+
+    rate_limit_rpm: int = 60  # requests per minute per IP (0 = disabled)
+    jwt_expiry_seconds: int = 86400  # 24 hours
+    require_auth: bool = False  # enable JWT auth on API endpoints
+
+
 class Settings(BaseSettings):
     """Root application settings.
 
@@ -143,6 +151,7 @@ class Settings(BaseSettings):
     narrative: NarrativeSettings = Field(default_factory=NarrativeSettings)
     jobs: JobSettings = Field(default_factory=JobSettings)
     upload: UploadSettings = Field(default_factory=UploadSettings)
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
 
     @field_validator("app_env")
     @classmethod

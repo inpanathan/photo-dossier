@@ -1,6 +1,6 @@
 # App Cheatsheet
 
-**<PROJECT_NAME> — Quick Reference**
+**Photo Dossier — Quick Reference**
 
 ## URLs & Endpoints
 
@@ -8,23 +8,26 @@
 
 | URL | Description |
 |-----|-------------|
-| `http://localhost:<FRONTEND_PORT>` | Frontend (dev server, proxies API to backend) |
-| `http://localhost:<BACKEND_PORT>` | Backend API root |
-| `http://localhost:<BACKEND_PORT>/health` | Health check |
-| `http://localhost:<BACKEND_PORT>/docs` | Swagger/OpenAPI docs |
-| `http://localhost:<BACKEND_PORT>/redoc` | ReDoc API docs |
-| `http://localhost:<BACKEND_PORT>/api/v1/admin/static-files` | Admin Console — Static File Mounts |
+| `http://localhost:5173` | Frontend (dev server, proxies API to backend) |
+| `http://localhost:8000` | Backend API root |
+| `http://localhost:8000/health` | Health check |
+| `http://localhost:8000/ready` | Readiness probe (ML services loaded?) |
+| `http://localhost:8000/docs` | Swagger/OpenAPI docs |
+| `http://localhost:8000/redoc` | ReDoc API docs |
+| `http://localhost:8000/api/v1/admin/static-files` | Admin Console — Static File Mounts |
+| `http://100.111.31.125:8010` | Inference service (detection, 7810 GPU 0) |
+| `http://100.111.31.125:8011/v1` | VLM service (Qwen2.5-VL, 7810 GPU 1) |
 
 ### Dev Login Credentials
 
-Seeded by `bash scripts/db_seed.sh`. Password for all accounts: `<!-- TODO: fill in -->`
+In dev/test mode, `POST /api/v1/auth/token` accepts any email/password and issues a JWT.
 
 | Email | Role | Notes |
 |-------|------|-------|
-| `admin@test.com` | admin | <!-- TODO: fill in --> |
-| `user@test.com` | user | <!-- TODO: fill in --> |
+| `admin@test.com` | admin | Gets admin role in JWT payload |
+| `user@test.com` | user | Gets user role in JWT payload |
 
-> **TODO:** Implement sign-up flows so accounts can be created without seeding.
+Auth is optional in dev mode (`SECURITY__REQUIRE_AUTH=false` by default).
 
 ### Monitoring Dashboard
 
@@ -120,27 +123,40 @@ uv run pytest tests/ --cov=src --cov-report=html
 | `NARRATIVE__LLM_BASE_URL` | `http://localhost:8001/v1` | Local vLLM (Qwen2.5-14B) |
 | `NARRATIVE__VLM_BASE_URL` | `http://100.111.31.125:8011/v1` | VLM service (Qwen2.5-VL) |
 | `JOBS__MAX_CONCURRENT_JOBS` | `4` | Max parallel background jobs |
+| `UPLOAD__UPLOAD_DIR` | `data/uploads` | Upload storage directory |
+| `UPLOAD__MAX_FILE_SIZE_MB` | `20` | Max upload file size |
+| `SECURITY__RATE_LIMIT_RPM` | `60` | Rate limit (requests per minute per IP) |
+| `SECURITY__JWT_EXPIRY_SECONDS` | `86400` | JWT token expiry |
+| `SECURITY__REQUIRE_AUTH` | `false` | Require JWT auth on endpoints |
 
 ## Monitoring
 
 | Dashboard | Description | Runbook |
 |-----------|-------------|---------|
-| Prediction Metrics | Confidence, latency, model distribution | `docs/runbook/low_confidence.md` |
-| Latency | p50/p95/p99 for all components | `docs/runbook/high_latency.md` |
-| Safety Compliance | Policy violations | — |
-| <!-- TODO: add project-specific dashboards --> | | |
+| Health & Readiness | `/health`, `/ready` endpoints | `docs/runbook/deployment_runbook.md#7.2` |
+| Index Stats | `/api/v1/index/stats` | `docs/runbook/index_rebuild_runbook.md` |
+| Job Queue | `/api/v1/jobs` — active jobs and progress | `docs/runbook/deployment_runbook.md#7.5` |
+| Prompt Logs | `data/logs/prompts.jsonl` | `docs/runbook/deployment_runbook.md#6.2` |
 
 ## Key Files
 
 | Path | Description |
 |------|-------------|
-| `main.py` | Application entry point |
-| `src/api/` | HTTP endpoint definitions |
-| `src/pipelines/` | Core pipeline logic |
-| `src/models/` | ML model wrappers |
-| `src/observability/` | Metrics, alerts, audit |
+| `main.py` | Application entry point (FastAPI lifespan, middleware) |
+| `src/api/routes.py` | All API endpoints (detect, query, pipeline, jobs, upload, auth) |
+| `src/embeddings/` | Detection & embedding clients (InsightFace, YOLOv8, DINOv2) |
+| `src/index/` | FAISS index manager & batch indexer |
+| `src/ingest/` | Corpus scanner, EXIF metadata extraction, SQLite store |
+| `src/narrative/` | Timeline builder, pattern detector, VLM describer, LLM generator |
+| `src/jobs/manager.py` | Async job queue with background workers |
+| `src/retrieval/service.py` | Search orchestration (detect → embed → search → enrich) |
+| `src/security/` | JWT auth, rate limiting middleware |
+| `src/observability/` | Correlation ID middleware, prompt logging |
+| `src/upload/service.py` | Photo upload (standard + resumable chunked) |
+| `src/utils/config.py` | Layered config (Settings singleton) |
+| `frontend/` | React SPA (Vite + TypeScript + Tailwind) |
 | `configs/dev.yaml` | Development configuration |
-| <!-- TODO: add project-specific key files --> | |
+| `.env.example` | Environment variable template |
 
 ## Scripts
 
@@ -234,6 +250,19 @@ bash scripts/start_inference.sh --stop
 ssh 100.111.31.125 'tail -50 /tmp/inference.log'
 ```
 
+### VLM Service (7810 Node, GPU 1)
+
+```bash
+# Start VLM service (Qwen2.5-VL-7B on GPU 1, port 8011)
+bash scripts/start_vlm.sh
+
+# Stop VLM service
+bash scripts/start_vlm.sh --stop
+
+# Check VLM service status
+curl http://100.111.31.125:8011/v1/models
+```
+
 ### Corpus Indexing
 
 ```bash
@@ -258,6 +287,16 @@ bash scripts/download_models.sh
 
 # Initialize data directory structure
 mkdir -p data/{corpus,indices,uploads}
+```
+
+### Evaluation
+
+```bash
+# Run evaluation against ground-truth manifest
+bash scripts/evaluate_all.sh
+
+# Run with custom manifest path
+bash scripts/evaluate_all.sh /path/to/manifest.json
 ```
 
 ### Git Workflow

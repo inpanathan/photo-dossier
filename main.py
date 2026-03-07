@@ -45,6 +45,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
     service.apply_all_mounts()
     logger.info("static_mounts_loaded", count=len(repo.list_all()))
 
+    # Initialize upload service (no ML deps required)
+    from src.api.routes import set_upload_service
+    from src.upload.service import UploadService
+
+    upload_service = UploadService()
+    set_upload_service(upload_service)
+
     # Initialize Dossier services (requires ML dependencies)
     _dossier_resources = []
     try:
@@ -95,6 +102,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # noqa: ARG001
     # Shutdown: close resources
     for resource in _dossier_resources:
         resource.close()
+    upload_service.close()
 
     logger.info("app_shutdown")
 
@@ -118,6 +126,16 @@ def create_app() -> FastAPI:
         redoc_url="/redoc" if settings.app_debug else None,
     )
 
+    # Rate limiting middleware
+    from src.security.rate_limit import RateLimitMiddleware
+
+    app.add_middleware(RateLimitMiddleware)
+
+    # Correlation ID middleware
+    from src.observability.middleware import CorrelationIdMiddleware
+
+    app.add_middleware(CorrelationIdMiddleware)
+
     # CORS middleware — open in debug, locked down otherwise
     app.add_middleware(
         CORSMiddleware,
@@ -137,6 +155,22 @@ def create_app() -> FastAPI:
             "status": "ok",
             "env": settings.app_env,
             "version": "0.1.0",
+        }
+
+    @app.get("/ready")
+    async def readiness_check(request: Request) -> dict:  # noqa: ARG001
+        """Readiness probe — checks if services are initialized."""
+        from src.api.routes import _index_manager, _inference_client
+
+        services = {
+            "inference_client": _inference_client is not None,
+            "index_manager": _index_manager is not None,
+        }
+        ready = all(services.values())
+        return {
+            "ready": ready,
+            "services": services,
+            "env": settings.app_env,
         }
 
     @app.exception_handler(AppError)

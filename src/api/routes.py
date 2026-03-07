@@ -502,3 +502,123 @@ async def serve_media(path: str):
         )
 
     return FileResponse(file_path)
+
+
+# ---- Photo Upload ----
+
+_upload_service = None
+
+
+def set_upload_service(upload_service) -> None:
+    """Called from main.py lifespan to inject upload service."""
+    global _upload_service  # noqa: PLW0603
+    _upload_service = upload_service
+
+
+class UploadInitRequest(BaseModel):
+    filename: str
+    total_size: int
+    content_type: str = "image/jpeg"
+
+
+@router.post("/photos/upload")
+async def upload_photo(
+    image: UploadFile = File(...),
+    metadata_json: str | None = Form(None),
+):
+    """Upload a photo with optional metadata.
+
+    Accepts JPEG, PNG, HEIC. Max size configured via UPLOAD__MAX_FILE_SIZE_MB.
+    """
+    if not _upload_service:
+        raise AppError(code=ErrorCode.INTERNAL_ERROR, message="Upload service not initialized")
+
+    content = await image.read()
+    result = _upload_service.upload_standard(image.filename or "upload.jpg", content)
+    return result
+
+
+@router.post("/photos/upload/init")
+async def init_resumable_upload(request: UploadInitRequest):
+    """Initialize a resumable upload session.
+
+    Returns a session_id to use with subsequent chunk uploads.
+    """
+    if not _upload_service:
+        raise AppError(code=ErrorCode.INTERNAL_ERROR, message="Upload service not initialized")
+
+    session = _upload_service.init_resumable(
+        request.filename, request.total_size, request.content_type
+    )
+    return session
+
+
+@router.patch("/photos/upload/{session_id}")
+async def upload_chunk(
+    session_id: str,
+    chunk: UploadFile = File(...),
+    offset: int = Form(0),
+):
+    """Upload a chunk for a resumable upload session.
+
+    Send chunks sequentially with correct offset values.
+    """
+    if not _upload_service:
+        raise AppError(code=ErrorCode.INTERNAL_ERROR, message="Upload service not initialized")
+
+    content = await chunk.read()
+    session = _upload_service.upload_chunk(session_id, content, offset)
+    return session
+
+
+@router.get("/photos/upload/{session_id}/status")
+async def get_upload_status(session_id: str):
+    """Check the status of a resumable upload session."""
+    if not _upload_service:
+        raise AppError(code=ErrorCode.INTERNAL_ERROR, message="Upload service not initialized")
+
+    session = _upload_service.get_session(session_id)
+    return session
+
+
+# ---- Authentication ----
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    token: str
+    expires_in: int
+
+
+@router.post("/auth/token", response_model=TokenResponse)
+async def get_auth_token(request: LoginRequest):
+    """Issue a JWT token for API authentication.
+
+    In dev mode, accepts any credentials from seeded accounts.
+    """
+    from src.security.auth import create_token
+
+    # Dev mode: accept seeded test credentials
+    if settings.app_env in ("dev", "test"):
+        token = create_token(
+            {"user_id": request.email, "role": "admin" if "admin" in request.email else "user"}
+        )
+        return TokenResponse(token=token, expires_in=settings.security.jwt_expiry_seconds)
+
+    raise AppError(
+        code=ErrorCode.UNAUTHORIZED,
+        message="Invalid credentials",
+    )
+
+
+@router.get("/auth/verify")
+async def verify_auth_token(authorization: str = Query(...)):
+    """Verify a JWT token and return the decoded payload."""
+    from src.security.auth import verify_token
+
+    payload = verify_token(authorization)
+    return {"valid": True, "payload": payload}
