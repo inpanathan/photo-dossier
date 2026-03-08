@@ -17,6 +17,7 @@ wheels/
 # Large data and model artifacts (use DVC)
 data/raw/
 data/processed/
+data/*.zip
 models/*.pt
 models/*.bin
 models/*.safetensors
@@ -71,3 +72,4 @@ coverage.xml
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/scratchpad/
+.claude/scheduled_tasks.lock

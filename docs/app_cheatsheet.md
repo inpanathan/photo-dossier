@@ -279,6 +279,36 @@ bash scripts/index_corpus.sh --full
 bash scripts/index_corpus.sh /path/to/photos --full
 ```
 
+### Corpus Download (Test Images)
+
+Downloads human/animal/mixed photos for testing the pipeline. Images go to `data/corpus/{coco,open-images}/`.
+
+```bash
+# Install corpus download dependencies
+uv sync --extra corpus
+
+# Download COCO 2017 train (~118K mixed scenes, ~18GB)
+bash scripts/download_corpus.sh coco
+
+# Download Open Images V7 filtered for Person/Dog/Cat/Animal (~900K)
+bash scripts/download_corpus.sh open-images
+
+# Download both datasets (~1M total)
+bash scripts/download_corpus.sh all
+
+# Limit image count (useful for quick testing)
+bash scripts/download_corpus.sh coco --limit 1000
+bash scripts/download_corpus.sh open-images --limit 5000
+
+# Preview what would download (no actual download)
+bash scripts/download_corpus.sh all --dry-run
+
+# Open Images: override default classes
+bash scripts/download_corpus.sh open-images --classes Person Dog Cat --limit 2000
+```
+
+Downloads are resumable — existing files are skipped on re-run. After downloading, index with `bash scripts/index_corpus.sh`.
+
 ### Data & Models
 
 ```bash

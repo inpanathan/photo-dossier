@@ -4,14 +4,15 @@
 # Usage: bash scripts/start_vlm.sh [--stop]
 #
 # Prerequisites:
-#   On 7810, install vLLM:  pip install vllm
+#   On 7810, vLLM is installed in ~/vllm-venv/
 #   Model will be auto-downloaded on first start (~15GB).
 
 set -euo pipefail
 
 REMOTE_HOST="100.111.31.125"
+REMOTE_PYTHON="/home/vinpanathan/vllm-venv/bin/python"
 PORT=8011
-MODEL="Qwen/Qwen2.5-VL-7B-Instruct"
+MODEL="Qwen/Qwen2.5-VL-7B-Instruct-AWQ"
 GPU_ID=1
 
 if [[ "${1:-}" == "--stop" ]]; then
@@ -33,14 +34,14 @@ ssh "$REMOTE_HOST" "pkill -f 'vllm.*$PORT' 2>/dev/null || true"
 sleep 2
 
 # Start vLLM with OpenAI-compatible API
-ssh "$REMOTE_HOST" "CUDA_VISIBLE_DEVICES=$GPU_ID nohup python -m vllm.entrypoints.openai.api_server \
+ssh "$REMOTE_HOST" "CUDA_VISIBLE_DEVICES=$GPU_ID nohup $REMOTE_PYTHON -m vllm.entrypoints.openai.api_server \
     --model $MODEL \
     --port $PORT \
     --host 0.0.0.0 \
     --max-model-len 4096 \
     --gpu-memory-utilization 0.90 \
     --trust-remote-code \
-    > /tmp/vlm.log 2>&1 &"
+    > /tmp/vlm.log 2>&1 &" < /dev/null
 
 echo "Waiting for model to load (this takes 2-5 minutes)..."
 
